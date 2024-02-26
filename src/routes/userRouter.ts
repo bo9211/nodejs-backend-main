@@ -2,7 +2,7 @@ import express from 'express';
 import {prisma} from '../../prisma';
 
 const router = express.Router();
-
+const bcrypt = require('bcrypt');
 // Register a new user
 router.post('/signup', async (req, res) => {
     const { username, email, password } = req.body;
@@ -13,10 +13,10 @@ router.post('/signup', async (req, res) => {
       if (existingUser) {
         return res.status(409).json({ error: 'Username already taken' });
       }
-  
+      const hashedPassword = await bcrypt.hash(password, 10);
       // Create a new user
-      await prisma.user.create({ data: { username, email, password } });
-  
+      await prisma.user.create({ data: { username, email, password : hashedPassword} });
+      
       return res.status(201).json({ message: 'User registered successfully' });
     } catch (error) {
       console.error(error);
@@ -33,9 +33,9 @@ router.post('/login', async (req, res) => {
     if (!user) {
       return res.status(401).json({ error: 'Invalid username or password' });
     }
-
+    const isMatch = await bcrypt.compare(password ,user.password)
     // Compare the provided password with the stored password
-    if (user.password !== password) {
+    if (! isMatch) {
       return res.status(401).json({ error: 'Invalid username or password' });
     }
     // Exclude password and other sensitive fields before sending
